@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: telegram-test-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Database volume
+      - ./data:/app/data
+      # PDF reports volume (optional)
+      - ./pdf_reports:/app/pdf_reports
+    networks:
+      - bot-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  bot-network:
+    driver: bridge
