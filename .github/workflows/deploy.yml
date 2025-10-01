@@ -8,44 +8,46 @@ jobs:
   deploy:
     name: Deploy Bot
     runs-on: ubuntu-latest
-    # Only run if secrets are configured
-    if: ${{ secrets.SERVER_HOST != '' }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Deploy to server via SSH
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SERVER_PORT || 22 }}
+          port: ${{ secrets.SERVER_PORT || '22' }}
           script: |
             # Navigate to project directory
-            cd ${{ secrets.PROJECT_PATH || '~/telegram-bot' }}
+            PROJECT_PATH="${{ secrets.PROJECT_PATH }}"
+            if [ -z "$PROJECT_PATH" ]; then
+              PROJECT_PATH="$HOME/telegram-bot"
+            fi
+            cd "$PROJECT_PATH"
 
             # Pull latest changes
-            git pull origin main || git pull origin master
+            git pull origin main 2>/dev/null || git pull origin master
 
             # Stop running container
-            docker-compose down
+            docker compose down
 
             # Rebuild and start container
-            docker-compose up -d --build
+            docker compose up -d --build
 
             # Clean up old images
             docker image prune -f
 
             # Show status
-            docker-compose ps
-            docker-compose logs --tail=50 bot
+            docker compose ps
+            docker compose logs --tail=50 bot
 
       - name: Notify deployment status
         if: always()
         run: |
-          if [ ${{ job.status }} == 'success' ]; then
+          if [ "${{ job.status }}" == "success" ]; then
             echo "✅ Deployment successful!"
           else
             echo "❌ Deployment failed!"
