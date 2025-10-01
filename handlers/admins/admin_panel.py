@@ -289,7 +289,7 @@ async def show_results_menu(message: Message):
     await message.answer(text)
 
 
-@router.message(F.func(lambda m: m.text.isdigit() and is_admin(m)))
+@router.message(F.func(lambda m: m.text and m.text.isdigit() and is_admin(m)))
 async def show_test_results(message: Message):
     test_id = int(message.text)
     test = db.get_test(test_id)
