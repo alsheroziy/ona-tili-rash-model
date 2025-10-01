@@ -5,7 +5,6 @@ def get_main_menu():
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📝 Test boshlash")],
-            [KeyboardButton(text="📊 Natijalarim")],
         ],
         resize_keyboard=True
     )

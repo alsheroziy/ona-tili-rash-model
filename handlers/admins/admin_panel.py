@@ -40,17 +40,26 @@ async def create_test_start(message: Message, state: FSMContext):
     await state.set_state(AdminTestStates.waiting_test_name)
 
 
+@router.message(AdminTestStates.waiting_test_name, F.text == "🏠 Asosiy menyu")
+async def cancel_test_creation(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer(
+        "Test yaratish bekor qilindi.",
+        reply_markup=get_admin_menu()
+    )
+
+
 @router.message(AdminTestStates.waiting_test_name)
 async def process_test_name(message: Message, state: FSMContext):
     test_name = message.text
     test_id = db.create_test(test_name, message.from_user.id)
-    
+
     await state.update_data(
         test_id=test_id,
         test_name=test_name,
         current_question=1
     )
-    
+
     await message.answer(
         f"✅ Test yaratildi: <b>{test_name}</b>\n\n"
         f"Endi to'g'ri javoblarni kiriting.\n\n"
@@ -59,6 +68,26 @@ async def process_test_name(message: Message, state: FSMContext):
         reply_markup=get_abcd_keyboard()
     )
     await state.set_state(AdminTestStates.answering_1_32)
+
+
+@router.message(AdminTestStates.answering_1_32, F.text == "🏠 Asosiy menyu")
+@router.message(AdminTestStates.answering_33_35, F.text == "🏠 Asosiy menyu")
+@router.message(AdminTestStates.answering_36_39, F.text == "🏠 Asosiy menyu")
+@router.message(AdminTestStates.answering_40_44_a, F.text == "🏠 Asosiy menyu")
+@router.message(AdminTestStates.answering_40_44_b, F.text == "🏠 Asosiy menyu")
+async def cancel_test_answering(message: Message, state: FSMContext):
+    data = await state.get_data()
+    test_id = data.get('test_id')
+
+    # Yarim yaratilgan testni o'chirish
+    if test_id:
+        db.delete_test(test_id)
+
+    await state.clear()
+    await message.answer(
+        "Test yaratish bekor qilindi va o'chirildi.",
+        reply_markup=get_admin_menu()
+    )
 
 
 @router.message(AdminTestStates.answering_1_32, F.text.in_(["A", "B", "C", "D"]))

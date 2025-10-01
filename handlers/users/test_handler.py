@@ -137,6 +137,17 @@ async def answer_33_35(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
+@router.message(TestStates.answering_36_39, F.text == "🏠 Asosiy menyu")
+@router.message(TestStates.answering_40_44_a, F.text == "🏠 Asosiy menyu")
+@router.message(TestStates.answering_40_44_b, F.text == "🏠 Asosiy menyu")
+async def cancel_test(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer(
+        "Test bekor qilindi. Javoblaringiz saqlanmadi.",
+        reply_markup=get_main_menu()
+    )
+
+
 @router.message(TestStates.answering_36_39)
 async def answer_36_39(message: Message, state: FSMContext):
     data = await state.get_data()
@@ -265,31 +276,9 @@ async def calculate_and_show_result(message: Message, state: FSMContext, test_id
 
     percentage = (score / max_score * 100) if max_score > 0 else 0
 
-    # Result message with Rasch score
-    result_text = (
-        f"✅ <b>Test yakunlandi!</b>\n\n"
-        f"📊 <b>Natija:</b>\n"
-        f"━━━━━━━━━━━━━━━━━━\n"
-        f"📝 Xom ball: {score:.1f} / {max_score:.0f}\n"
-        f"📈 Foiz: {percentage:.1f}%\n\n"
-        f"🎯 <b>Rasch Model (Xalqaro metodika):</b>\n"
-        f"━━━━━━━━━━━━━━━━━━\n"
-        f"🏆 Reyting: {rasch_score:.2f} / 78\n"
-        f"📊 Daraja: <b>{level}</b> - {level_desc}\n\n"
-    )
-
-    # Add interpretation based on level
-    if level == "A+" or level == "A":
-        result_text += "🌟 A'lo natija! Siz ajoyib bilim ko'rsatdingiz!"
-    elif level == "B+" or level == "B":
-        result_text += "👍 Yaxshi natija! Davom eting!"
-    elif level == "C+" or level == "C":
-        result_text += "💪 Qoniqarli natija. Ko'proq mashq qiling!"
-    else:
-        result_text += "📚 O'tmadingiz. Qayta urinib ko'ring!"
-
+    # Result message - simplified
     await message.answer(
-        result_text,
+        "✅ <b>Test yakunlandi!</b>",
         reply_markup=get_main_menu()
     )
 
