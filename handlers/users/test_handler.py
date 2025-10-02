@@ -38,7 +38,11 @@ async def choose_test(callback: CallbackQuery, state: FSMContext):
         answers={}
     )
 
-    await callback.message.delete()
+    try:
+        await callback.message.delete()
+    except:
+        pass
+
     await callback.message.answer(
         "Test boshlandi!\n\n"
         "1-32 savollar: A, B, C, D variantlari\n\n"
@@ -46,7 +50,11 @@ async def choose_test(callback: CallbackQuery, state: FSMContext):
         reply_markup=get_abcd_inline_keyboard()
     )
     await state.set_state(TestStates.answering_1_32)
-    await callback.answer()
+
+    try:
+        await callback.answer()
+    except:
+        pass
 
 
 @router.callback_query(TestStates.answering_1_32, F.data.startswith("answer_"))
@@ -54,6 +62,22 @@ async def answer_1_32(callback: CallbackQuery, state: FSMContext):
     answer = callback.data.split("_")[1]  # "answer_A" -> "A"
 
     data = await state.get_data()
+    test_id = data.get('test_id')
+
+    # Check if test is still active
+    test = db.get_test(test_id)
+    if not test or test[3] == 0:  # is_active = 0
+        await callback.message.answer(
+            "⚠️ Bu test admin tomonidan tugatildi. Javoblaringiz saqlanmadi.",
+            reply_markup=get_main_menu()
+        )
+        await state.clear()
+        try:
+            await callback.answer("Test tugagan!", show_alert=True)
+        except:
+            pass
+        return
+
     current = data['current_question']
     answers = data.get('answers', {})
 
@@ -91,7 +115,10 @@ async def answer_1_32(callback: CallbackQuery, state: FSMContext):
             )
         await state.set_state(TestStates.answering_33_35)
 
-    await callback.answer()
+    try:
+        await callback.answer()
+    except:
+        pass
 
 
 @router.callback_query(TestStates.answering_33_35, F.data.startswith("answer_"))
@@ -99,6 +126,22 @@ async def answer_33_35(callback: CallbackQuery, state: FSMContext):
     answer = callback.data.split("_")[1]  # "answer_A" -> "A"
 
     data = await state.get_data()
+    test_id = data.get('test_id')
+
+    # Check if test is still active
+    test = db.get_test(test_id)
+    if not test or test[3] == 0:  # is_active = 0
+        await callback.message.answer(
+            "⚠️ Bu test admin tomonidan tugatildi. Javoblaringiz saqlanmadi.",
+            reply_markup=get_main_menu()
+        )
+        await state.clear()
+        try:
+            await callback.answer("Test tugagan!", show_alert=True)
+        except:
+            pass
+        return
+
     current = data['current_question']
     answers = data.get('answers', {})
 
@@ -134,7 +177,10 @@ async def answer_33_35(callback: CallbackQuery, state: FSMContext):
             )
         await state.set_state(TestStates.answering_36_39)
 
-    await callback.answer()
+    try:
+        await callback.answer()
+    except:
+        pass
 
 
 @router.message(TestStates.answering_36_39, F.text == "🏠 Asosiy menyu")
@@ -151,6 +197,18 @@ async def cancel_test(message: Message, state: FSMContext):
 @router.message(TestStates.answering_36_39)
 async def answer_36_39(message: Message, state: FSMContext):
     data = await state.get_data()
+    test_id = data.get('test_id')
+
+    # Check if test is still active
+    test = db.get_test(test_id)
+    if not test or test[3] == 0:  # is_active = 0
+        await message.answer(
+            "⚠️ Bu test admin tomonidan tugatildi. Javoblaringiz saqlanmadi.",
+            reply_markup=get_main_menu()
+        )
+        await state.clear()
+        return
+
     current = data['current_question']
     answers = data.get('answers', {})
 
@@ -175,6 +233,18 @@ async def answer_36_39(message: Message, state: FSMContext):
 @router.message(TestStates.answering_40_44_a)
 async def answer_40_44_a(message: Message, state: FSMContext):
     data = await state.get_data()
+    test_id = data.get('test_id')
+
+    # Check if test is still active
+    test = db.get_test(test_id)
+    if not test or test[3] == 0:  # is_active = 0
+        await message.answer(
+            "⚠️ Bu test admin tomonidan tugatildi. Javoblaringiz saqlanmadi.",
+            reply_markup=get_main_menu()
+        )
+        await state.clear()
+        return
+
     current = data['current_question']
     answers = data.get('answers', {})
 
@@ -190,9 +260,20 @@ async def answer_40_44_a(message: Message, state: FSMContext):
 @router.message(TestStates.answering_40_44_b)
 async def answer_40_44_b(message: Message, state: FSMContext):
     data = await state.get_data()
+    test_id = data['test_id']
+
+    # Check if test is still active
+    test = db.get_test(test_id)
+    if not test or test[3] == 0:  # is_active = 0
+        await message.answer(
+            "⚠️ Bu test admin tomonidan tugatildi. Javoblaringiz saqlanmadi.",
+            reply_markup=get_main_menu()
+        )
+        await state.clear()
+        return
+
     current = data['current_question']
     answers = data.get('answers', {})
-    test_id = data['test_id']
 
     answers[f"{current}_b"] = message.text
 

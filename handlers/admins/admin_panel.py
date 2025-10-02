@@ -370,30 +370,89 @@ async def confirm_finish_test(callback: CallbackQuery):
         await callback.answer(f"Test allaqachon tugatilgan!", show_alert=True)
         return
 
-    # Testni tugatish
-    db.finish_test(test_id)
-
     # Test topshirayotgan userlarni olish
     from loader import bot
+    from utils.rasch_model import calculate_rasch_score
     active_users = db.get_active_test_users(test_id)
 
-    # Userlarga xabar yuborish
+    # Har bir user uchun natijani hisoblash va saqlash
+    saved_count = 0
     notified_count = 0
+
+    correct_answers = db.get_test_answers(test_id)
+
     for user_id in active_users:
         try:
+            # User javoblarini olish
+            user_answers = db.get_user_answers(user_id, test_id)
+
+            if user_answers:  # Agar biror javob berilgan bo'lsa
+                # Ball hisoblash
+                score = 0.0
+                max_score = 0.0
+
+                # 1-32 savollar (har biri 1 ball)
+                for i in range(1, 33):
+                    max_score += 1.0
+                    user_key = str(i)
+                    if user_key in user_answers and user_key in correct_answers:
+                        if user_answers[user_key].upper() == correct_answers[user_key].upper():
+                            score += 1.0
+
+                # 33-35 savollar (har biri 1 ball)
+                for i in range(33, 36):
+                    max_score += 1.0
+                    user_key = str(i)
+                    if user_key in user_answers and user_key in correct_answers:
+                        if user_answers[user_key].upper() == correct_answers[user_key].upper():
+                            score += 1.0
+
+                # 36-39 savollar (har biri 2 ball)
+                for i in range(36, 40):
+                    max_score += 2.0
+                    user_key = str(i)
+                    if user_key in user_answers and user_key in correct_answers:
+                        if user_answers[user_key].strip().lower() == correct_answers[user_key].strip().lower():
+                            score += 2.0
+
+                # 40-44 savollar (har biri 3 ball: A=1.5, B=1.5)
+                for i in range(40, 45):
+                    max_score += 3.0
+                    a_key = f"{i}_a"
+                    b_key = f"{i}_b"
+
+                    if a_key in user_answers and a_key in correct_answers:
+                        if user_answers[a_key].strip().lower() == correct_answers[a_key].strip().lower():
+                            score += 1.5
+
+                    if b_key in user_answers and b_key in correct_answers:
+                        if user_answers[b_key].strip().lower() == correct_answers[b_key].strip().lower():
+                            score += 1.5
+
+                # Calculate Rasch model score
+                rasch_score = calculate_rasch_score(score, max_score)
+
+                # Natijani saqlash
+                db.save_result(user_id, test_id, rasch_score)
+                saved_count += 1
+
+            # Userga xabar yuborish
             await bot.send_message(
                 user_id,
                 f"⚠️ <b>Test tugadi!</b>\n\n"
                 f"<b>{test_name}</b> testi admin tomonidan tugatildi.\n\n"
-                f"Siz belgilagan javoblar saqlandi.\n"
-                f"Natijani ko'rish uchun 📊 Natijalarim bo'limiga kiring."
+                f"Siz belgilagan javoblar saqlandi."
             )
             notified_count += 1
         except:
             pass
 
+    # Testni tugatish
+    db.finish_test(test_id)
+
     await callback.message.edit_text(
         f"✅ Test <b>{test_name}</b> tugatildi!\n\n"
+        f"Natijalar saqlandi: {saved_count} ta\n"
         f"Xabar yuborildi: {notified_count} ta foydalanuvchiga"
     )
     await callback.answer()
