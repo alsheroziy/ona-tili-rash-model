@@ -195,6 +195,12 @@ class Database:
                FROM test_results tr
                JOIN users u ON tr.user_id = u.user_id
                WHERE tr.test_id = ?
+               AND tr.id = (
+                   SELECT id FROM test_results
+                   WHERE user_id = tr.user_id AND test_id = tr.test_id
+                   ORDER BY completed_at DESC
+                   LIMIT 1
+               )
                ORDER BY tr.score DESC, u.full_name ASC""",
             (test_id,)
         )
