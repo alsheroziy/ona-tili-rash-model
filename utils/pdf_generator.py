@@ -13,20 +13,27 @@ import os
 
 def calculate_grade(score: float) -> str:
     """Ballga qarab bahoni aniqlash (78 ball tizimi)"""
-    if score >= 54.6:
+    if score >= 70:
         return "A+"
-    elif score >= 50.7:
+    elif score >= 65:
         return "A"
-    elif score >= 46.8:
+    elif score >= 60:
         return "B+"
-    elif score >= 42.9:
+    elif score >= 55:
         return "B"
-    elif score >= 39:
+    elif score >= 50:
         return "C+"
-    elif score >= 35.88:
+    elif score >= 46:
         return "C"
     else:
-        return "F"
+        return "NC"
+
+
+def calculate_percent(score: float, max_score: float = 78) -> float:
+    """Ballni foizga o'girish"""
+    if max_score == 0:
+        return 0.0
+    return round((score / max_score) * 100, 2)
 
 
 def generate_test_results_pdf(test_name: str, results: List[Tuple[int, str, float, str]], output_path: str):
@@ -81,21 +88,23 @@ def generate_test_results_pdf(test_name: str, results: List[Tuple[int, str, floa
 
     # Table data
     data = [
-        ['№', 'Ism va familiya', "To'g'ri\njavoblar\nsoni", 'Ball', 'Daraja']
+        ['№', 'Ism va familiya', "To'g'ri\njavoblar", 'Ball', 'Foiz', 'Daraja']
     ]
 
     for idx, (correct_count, full_name, score, completed_at) in enumerate(results, 1):
         grade = calculate_grade(score)
+        percent = calculate_percent(score)
         data.append([
             str(idx),
             full_name,
             str(correct_count),
             f"{score:.2f}",
+            f"{percent:.2f}%",
             grade
         ])
 
     # Create table
-    table = Table(data, colWidths=[0.6*inch, 3*inch, 1.2*inch, 1*inch, 1*inch])
+    table = Table(data, colWidths=[0.5*inch, 2.5*inch, 0.9*inch, 0.9*inch, 0.9*inch, 0.9*inch])
 
     # Table style
     table_style = TableStyle([

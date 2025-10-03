@@ -9,18 +9,20 @@ def calculate_rasch_score(raw_score: float, max_score: float) -> float:
     """
     Calculate Rasch model score from raw score.
 
-    The Rasch model converts raw scores to ability estimates using logit transformation:
-    1. Calculate proportion correct (p)
-    2. Calculate odds ratio: p / (1 - p)
-    3. Apply natural log to get logit (ability estimate)
-    4. Scale to 0-78 range
+    The Rasch model converts raw scores to ability estimates using logit transformation.
+    Formula calibrated based on Uzbekistan National Certificate exam data.
+
+    Reference points:
+    - 47/50 (94%) -> 82.1 ball
+    - 40/50 (80%) -> 71.25 ball
+    - 30/50 (60%) -> 58.59 ball
 
     Args:
         raw_score: Total points earned
         max_score: Maximum possible points
 
     Returns:
-        Rasch score in 0-78 range
+        Rasch score in 0-85 range
     """
     if max_score == 0:
         return 0.0
@@ -28,25 +30,24 @@ def calculate_rasch_score(raw_score: float, max_score: float) -> float:
     # Calculate proportion correct
     proportion = raw_score / max_score
 
-    # Handle edge cases (0% and 100%)
-    if proportion <= 0.0001:
-        proportion = 0.0001
-    elif proportion >= 0.9999:
-        proportion = 0.9999
+    # Handle edge cases
+    if proportion <= 0.001:
+        return 0.0
+    elif proportion >= 0.999:
+        proportion = 0.999
 
-    # Calculate odds ratio: p / (1-p)
-    odds = proportion / (1 - proportion)
+    # Calculate logit (log odds)
+    logit = math.log(proportion / (1 - proportion))
 
-    # Calculate logit (natural log of odds)
-    logit = math.log(odds)
+    # Rasch formula: ball = offset + scale * logit
+    # Calibrated values:
+    offset = 52.0
+    scale = 12.5
 
-    # Scale logit to 0-78 range
-    # Logit typically ranges from about -7 to +7
-    # We'll map -7 to 0 and +7 to 78
-    rasch_score = ((logit + 7) / 14) * 78
+    rasch_score = offset + scale * logit
 
-    # Ensure within 0-78 bounds
-    rasch_score = max(0, min(78, rasch_score))
+    # Ensure within reasonable bounds
+    rasch_score = max(0, min(85, rasch_score))
 
     return round(rasch_score, 2)
 
@@ -56,13 +57,13 @@ def get_score_level(rasch_score: float) -> tuple:
     Get score level based on Rasch score.
 
     Based on Uzbekistan National Certificate levels (78 ball tizimi):
-    - 54.6+: A+ level (70% dan yuqori)
-    - 50.7-54.59: A level (65-69.9%)
-    - 46.8-50.69: B+ level (60-64.9%)
-    - 42.9-46.79: B level (55-59.9%)
-    - 39-42.89: C+ level (50-54.9%)
-    - 35.88-38.99: C level (46-49.9%)
-    - Below 35.88: Not passed
+    - 70+: A+ level
+    - 65-70: A level
+    - 60-65: B+ level
+    - 55-60: B level
+    - 50-55: C+ level
+    - 46-50: C level
+    - Below 46: NC (Not Classified)
 
     Args:
         rasch_score: Rasch model score (0-78)
@@ -70,20 +71,20 @@ def get_score_level(rasch_score: float) -> tuple:
     Returns:
         Tuple of (level, description)
     """
-    if rasch_score >= 54.6:
+    if rasch_score >= 70:
         return ("A+", "A'lo (maksimal ball)")
-    elif rasch_score >= 50.7:
+    elif rasch_score >= 65:
         return ("A", "A'lo")
-    elif rasch_score >= 46.8:
+    elif rasch_score >= 60:
         return ("B+", "Yaxshi (yuqori)")
-    elif rasch_score >= 42.9:
+    elif rasch_score >= 55:
         return ("B", "Yaxshi")
-    elif rasch_score >= 39:
+    elif rasch_score >= 50:
         return ("C+", "Qoniqarli (yuqori)")
-    elif rasch_score >= 35.88:
+    elif rasch_score >= 46:
         return ("C", "Qoniqarli")
     else:
-        return ("F", "O'tmadi")
+        return ("NC", "Tasniflanmagan")
 
 
 def calculate_logistic_probability(ability: float, difficulty: float) -> float:

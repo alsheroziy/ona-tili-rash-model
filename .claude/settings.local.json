@@ -5,7 +5,9 @@
       "Bash(.venv/bin/python:*)",
       "Bash(.venv/bin/pip:*)",
       "Bash(sqlite3:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(python3:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
