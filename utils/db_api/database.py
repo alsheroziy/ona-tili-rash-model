@@ -145,6 +145,11 @@ class Database:
 
     # ========== USER ANSWERS ==========
     def add_user_answer(self, user_id: int, test_id: int, question_num: str, answer: str):
+        # Agar savol allaqachon javob berilgan bo'lsa, yangilash
+        self.cursor.execute(
+            "DELETE FROM user_answers WHERE user_id = ? AND test_id = ? AND question_num = ?",
+            (user_id, test_id, question_num)
+        )
         self.cursor.execute(
             "INSERT INTO user_answers (user_id, test_id, question_num, answer) VALUES (?, ?, ?, ?)",
             (user_id, test_id, question_num, answer)
@@ -167,10 +172,25 @@ class Database:
 
     # ========== RESULTS ==========
     def save_result(self, user_id: int, test_id: int, score: float):
+        # Agar user uchun bu testning natijasi allaqachon saqlangan bo'lsa, yangilaymiz
         self.cursor.execute(
-            "INSERT INTO test_results (user_id, test_id, score) VALUES (?, ?, ?)",
-            (user_id, test_id, score)
+            "SELECT id FROM test_results WHERE user_id = ? AND test_id = ?",
+            (user_id, test_id)
         )
+        existing = self.cursor.fetchone()
+
+        if existing:
+            # Natijani yangilash
+            self.cursor.execute(
+                "UPDATE test_results SET score = ?, completed_at = CURRENT_TIMESTAMP WHERE user_id = ? AND test_id = ?",
+                (score, user_id, test_id)
+            )
+        else:
+            # Yangi natija qo'shish
+            self.cursor.execute(
+                "INSERT INTO test_results (user_id, test_id, score) VALUES (?, ?, ?)",
+                (user_id, test_id, score)
+            )
         self.connection.commit()
 
     def get_user_results(self, user_id: int) -> List[tuple]:

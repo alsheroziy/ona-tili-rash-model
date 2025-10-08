@@ -32,6 +32,9 @@ async def start_test(message: Message, state: FSMContext):
 async def choose_test(callback: CallbackQuery, state: FSMContext):
     test_id = int(callback.data.split("_")[1])
 
+    # Eski javoblarni o'chirish (agar qayta boshlagan bo'lsa)
+    db.clear_user_answers(callback.from_user.id, test_id)
+
     await state.update_data(
         test_id=test_id,
         current_question=1,
@@ -82,6 +85,9 @@ async def answer_1_32(callback: CallbackQuery, state: FSMContext):
     answers = data.get('answers', {})
 
     answers[str(current)] = answer
+
+    # Javobni darhol bazaga saqlash
+    db.add_user_answer(callback.from_user.id, test_id, str(current), answer)
 
     if current < 32:
         current += 1
@@ -146,6 +152,9 @@ async def answer_33_35(callback: CallbackQuery, state: FSMContext):
     answers = data.get('answers', {})
 
     answers[str(current)] = answer
+
+    # Javobni darhol bazaga saqlash
+    db.add_user_answer(callback.from_user.id, test_id, str(current), answer)
 
     if current < 35:
         current += 1
@@ -214,6 +223,9 @@ async def answer_36_39(message: Message, state: FSMContext):
 
     answers[str(current)] = message.text
 
+    # Javobni darhol bazaga saqlash
+    db.add_user_answer(message.from_user.id, test_id, str(current), message.text)
+
     if current < 39:
         current += 1
         await state.update_data(current_question=current, answers=answers)
@@ -250,6 +262,9 @@ async def answer_40_44_a(message: Message, state: FSMContext):
 
     answers[f"{current}_a"] = message.text
 
+    # Javobni darhol bazaga saqlash
+    db.add_user_answer(message.from_user.id, test_id, f"{current}_a", message.text)
+
     await state.update_data(answers=answers)
     await message.answer(
         f"{current}-savol, B qismini yozing:"
@@ -277,6 +292,9 @@ async def answer_40_44_b(message: Message, state: FSMContext):
 
     answers[f"{current}_b"] = message.text
 
+    # Javobni darhol bazaga saqlash
+    db.add_user_answer(message.from_user.id, test_id, f"{current}_b", message.text)
+
     if current < 44:
         current += 1
         await state.update_data(current_question=current, answers=answers)
@@ -292,7 +310,7 @@ async def answer_40_44_b(message: Message, state: FSMContext):
 async def calculate_and_show_result(message: Message, state: FSMContext, test_id: int, user_answers: dict):
     # Bazadan to'g'ri javoblarni olish
     correct_answers = db.get_test_answers(test_id)
-    
+
     if not correct_answers:
         await message.answer(
             "❌ Xatolik: Test javoblari topilmadi!",
@@ -300,11 +318,13 @@ async def calculate_and_show_result(message: Message, state: FSMContext, test_id
         )
         await state.clear()
         return
-    
-    # Bazaga foydalanuvchi javoblarini saqlash
-    db.clear_user_answers(message.from_user.id, test_id)
+
+    # Javoblar allaqachon har qadamda saqlanganligini tekshirish
+    # Agar biror sabab bilan ba'zi javoblar saqlanmagan bo'lsa, ularni saqlash
+    saved_answers = db.get_user_answers(message.from_user.id, test_id)
     for q_num, answer in user_answers.items():
-        db.add_user_answer(message.from_user.id, test_id, str(q_num), answer)
+        if str(q_num) not in saved_answers:
+            db.add_user_answer(message.from_user.id, test_id, str(q_num), answer)
     
     # Ball hisoblash
     score = 0.0
