@@ -375,11 +375,17 @@ async def confirm_finish_test(callback: CallbackQuery):
     from utils.rasch_model import calculate_rasch_score
     active_users = db.get_active_test_users(test_id)
 
+    print(f"\n{'='*50}")
+    print(f"🛑 Test tugatish boshlandi: {test_name} (ID: {test_id})")
+    print(f"📊 Jami userlar: {len(active_users)}")
+    print(f"{'='*50}\n")
+
     # Har bir user uchun natijani hisoblash va saqlash
     saved_count = 0
     notified_count = 0
 
     correct_answers = db.get_test_answers(test_id)
+    print(f"✅ To'g'ri javoblar: {len(correct_answers)} ta savol\n")
 
     for user_id in active_users:
         try:
@@ -436,19 +442,32 @@ async def confirm_finish_test(callback: CallbackQuery):
                 db.save_result(user_id, test_id, rasch_score)
                 saved_count += 1
 
+                print(f"✅ User {user_id}: {len(user_answers)} javob, {rasch_score:.2f} ball saqlandi")
+            else:
+                print(f"⚠️ User {user_id}: Javoblar topilmadi")
+
             # Userga xabar yuborish
-            await bot.send_message(
-                user_id,
-                f"⚠️ <b>Test tugadi!</b>\n\n"
-                f"<b>{test_name}</b> testi admin tomonidan tugatildi.\n\n"
-                f"Siz belgilagan javoblar saqlandi."
-            )
-            notified_count += 1
-        except:
-            pass
+            try:
+                await bot.send_message(
+                    user_id,
+                    f"⚠️ <b>Test tugadi!</b>\n\n"
+                    f"<b>{test_name}</b> testi admin tomonidan tugatildi.\n\n"
+                    f"Siz belgilagan javoblar saqlandi."
+                )
+                notified_count += 1
+            except Exception as e:
+                print(f"❌ User {user_id}ga xabar yuborishda xato: {e}")
+        except Exception as e:
+            print(f"❌ User {user_id} uchun natija hisoblashda xato: {e}")
 
     # Testni tugatish
     db.finish_test(test_id)
+
+    print(f"\n{'='*50}")
+    print(f"✅ TEST TUGATISH YAKUNLANDI!")
+    print(f"📊 Natijalar saqlandi: {saved_count}/{len(active_users)}")
+    print(f"📧 Xabar yuborildi: {notified_count}/{len(active_users)}")
+    print(f"{'='*50}\n")
 
     await callback.message.edit_text(
         f"✅ Test <b>{test_name}</b> tugatildi!\n\n"

@@ -114,7 +114,9 @@ class Database:
             """SELECT DISTINCT user_id FROM user_answers WHERE test_id = ?""",
             (test_id,)
         )
-        return [row[0] for row in self.cursor.fetchall()]
+        users = [row[0] for row in self.cursor.fetchall()]
+        # Debug: print(f"📋 Test {test_id}: {len(users)} ta user topildi")
+        return users
 
     def delete_test(self, test_id: int):
         """Testni butunlay o'chirish (barcha ma'lumotlari bilan)"""
@@ -145,23 +147,30 @@ class Database:
 
     # ========== USER ANSWERS ==========
     def add_user_answer(self, user_id: int, test_id: int, question_num: str, answer: str):
-        # Agar savol allaqachon javob berilgan bo'lsa, yangilash
-        self.cursor.execute(
-            "DELETE FROM user_answers WHERE user_id = ? AND test_id = ? AND question_num = ?",
-            (user_id, test_id, question_num)
-        )
-        self.cursor.execute(
-            "INSERT INTO user_answers (user_id, test_id, question_num, answer) VALUES (?, ?, ?, ?)",
-            (user_id, test_id, question_num, answer)
-        )
-        self.connection.commit()
+        try:
+            # Agar savol allaqachon javob berilgan bo'lsa, yangilash
+            self.cursor.execute(
+                "DELETE FROM user_answers WHERE user_id = ? AND test_id = ? AND question_num = ?",
+                (user_id, test_id, question_num)
+            )
+            self.cursor.execute(
+                "INSERT INTO user_answers (user_id, test_id, question_num, answer) VALUES (?, ?, ?, ?)",
+                (user_id, test_id, question_num, answer)
+            )
+            self.connection.commit()
+            # Debug: print(f"💾 User {user_id}, Test {test_id}, Savol {question_num}: '{answer}' saqlandi")
+        except Exception as e:
+            print(f"❌ Javob saqlashda xato: User {user_id}, Test {test_id}, Savol {question_num} - {e}")
+            self.connection.rollback()
 
     def get_user_answers(self, user_id: int, test_id: int) -> Dict[str, str]:
         self.cursor.execute(
             "SELECT question_num, answer FROM user_answers WHERE user_id = ? AND test_id = ?",
             (user_id, test_id)
         )
-        return {row[0]: row[1] for row in self.cursor.fetchall()}
+        answers = {row[0]: row[1] for row in self.cursor.fetchall()}
+        # Debug: print(f"📖 User {user_id}, Test {test_id}: {len(answers)} javob topildi")
+        return answers
 
     def clear_user_answers(self, user_id: int, test_id: int):
         self.cursor.execute(
@@ -172,26 +181,32 @@ class Database:
 
     # ========== RESULTS ==========
     def save_result(self, user_id: int, test_id: int, score: float):
-        # Agar user uchun bu testning natijasi allaqachon saqlangan bo'lsa, yangilaymiz
-        self.cursor.execute(
-            "SELECT id FROM test_results WHERE user_id = ? AND test_id = ?",
-            (user_id, test_id)
-        )
-        existing = self.cursor.fetchone()
+        try:
+            # Agar user uchun bu testning natijasi allaqachon saqlangan bo'lsa, yangilaymiz
+            self.cursor.execute(
+                "SELECT id FROM test_results WHERE user_id = ? AND test_id = ?",
+                (user_id, test_id)
+            )
+            existing = self.cursor.fetchone()
 
-        if existing:
-            # Natijani yangilash
-            self.cursor.execute(
-                "UPDATE test_results SET score = ?, completed_at = CURRENT_TIMESTAMP WHERE user_id = ? AND test_id = ?",
-                (score, user_id, test_id)
-            )
-        else:
-            # Yangi natija qo'shish
-            self.cursor.execute(
-                "INSERT INTO test_results (user_id, test_id, score) VALUES (?, ?, ?)",
-                (user_id, test_id, score)
-            )
-        self.connection.commit()
+            if existing:
+                # Natijani yangilash
+                self.cursor.execute(
+                    "UPDATE test_results SET score = ?, completed_at = CURRENT_TIMESTAMP WHERE user_id = ? AND test_id = ?",
+                    (score, user_id, test_id)
+                )
+                # Debug: print(f"🔄 User {user_id}, Test {test_id}: Natija yangilandi - {score:.2f} ball")
+            else:
+                # Yangi natija qo'shish
+                self.cursor.execute(
+                    "INSERT INTO test_results (user_id, test_id, score) VALUES (?, ?, ?)",
+                    (user_id, test_id, score)
+                )
+                # Debug: print(f"✅ User {user_id}, Test {test_id}: Yangi natija saqlandi - {score:.2f} ball")
+            self.connection.commit()
+        except Exception as e:
+            print(f"❌ Natija saqlashda xato: User {user_id}, Test {test_id} - {e}")
+            self.connection.rollback()
 
     def get_user_results(self, user_id: int) -> List[tuple]:
         self.cursor.execute(

@@ -13,6 +13,70 @@ router = Router()
 db = Database(DB_NAME)
 
 
+def update_user_score(user_id: int, test_id: int):
+    """User javoblaridan natijani hisoblash va yangilash"""
+    try:
+        # User javoblarini olish
+        user_answers = db.get_user_answers(user_id, test_id)
+
+        # To'g'ri javoblarni olish
+        correct_answers = db.get_test_answers(test_id)
+
+        if not correct_answers or not user_answers:
+            return
+
+        # Ball hisoblash
+        score = 0.0
+        max_score = 0.0
+
+        # 1-32 savollar (har biri 1 ball)
+        for i in range(1, 33):
+            max_score += 1.0
+            user_key = str(i)
+            if user_key in user_answers and user_key in correct_answers:
+                if user_answers[user_key].upper() == correct_answers[user_key].upper():
+                    score += 1.0
+
+        # 33-35 savollar (har biri 1 ball)
+        for i in range(33, 36):
+            max_score += 1.0
+            user_key = str(i)
+            if user_key in user_answers and user_key in correct_answers:
+                if user_answers[user_key].upper() == correct_answers[user_key].upper():
+                    score += 1.0
+
+        # 36-39 savollar (har biri 2 ball)
+        for i in range(36, 40):
+            max_score += 2.0
+            user_key = str(i)
+            if user_key in user_answers and user_key in correct_answers:
+                if user_answers[user_key].strip().lower() == correct_answers[user_key].strip().lower():
+                    score += 2.0
+
+        # 40-44 savollar (har biri 3 ball: A=1.5, B=1.5)
+        for i in range(40, 45):
+            max_score += 3.0
+            a_key = f"{i}_a"
+            b_key = f"{i}_b"
+
+            if a_key in user_answers and a_key in correct_answers:
+                if user_answers[a_key].strip().lower() == correct_answers[a_key].strip().lower():
+                    score += 1.5
+
+            if b_key in user_answers and b_key in correct_answers:
+                if user_answers[b_key].strip().lower() == correct_answers[b_key].strip().lower():
+                    score += 1.5
+
+        # Calculate Rasch model score
+        rasch_score = calculate_rasch_score(score, max_score)
+
+        # Natijani saqlash
+        db.save_result(user_id, test_id, rasch_score)
+
+    except Exception as e:
+        print(f"❌ Natijani yangilashda xato (User {user_id}, Test {test_id}): {e}")
+
+
 @router.message(F.text == "📝 Test boshlash")
 async def start_test(message: Message, state: FSMContext):
     tests = db.get_active_tests()
@@ -34,6 +98,10 @@ async def choose_test(callback: CallbackQuery, state: FSMContext):
 
     # Eski javoblarni o'chirish (agar qayta boshlagan bo'lsa)
     db.clear_user_answers(callback.from_user.id, test_id)
+
+    # Test boshlanganda darhol 0 ball bilan natija yaratish
+    # Bu user test boshlagani haqida ma'lumot beradi
+    db.save_result(callback.from_user.id, test_id, 0.0)
 
     await state.update_data(
         test_id=test_id,
@@ -88,6 +156,9 @@ async def answer_1_32(callback: CallbackQuery, state: FSMContext):
 
     # Javobni darhol bazaga saqlash
     db.add_user_answer(callback.from_user.id, test_id, str(current), answer)
+
+    # Natijani yangilash
+    update_user_score(callback.from_user.id, test_id)
 
     if current < 32:
         current += 1
@@ -155,6 +226,9 @@ async def answer_33_35(callback: CallbackQuery, state: FSMContext):
 
     # Javobni darhol bazaga saqlash
     db.add_user_answer(callback.from_user.id, test_id, str(current), answer)
+
+    # Natijani yangilash
+    update_user_score(callback.from_user.id, test_id)
 
     if current < 35:
         current += 1
@@ -226,6 +300,9 @@ async def answer_36_39(message: Message, state: FSMContext):
     # Javobni darhol bazaga saqlash
     db.add_user_answer(message.from_user.id, test_id, str(current), message.text)
 
+    # Natijani yangilash
+    update_user_score(message.from_user.id, test_id)
+
     if current < 39:
         current += 1
         await state.update_data(current_question=current, answers=answers)
@@ -265,6 +342,9 @@ async def answer_40_44_a(message: Message, state: FSMContext):
     # Javobni darhol bazaga saqlash
     db.add_user_answer(message.from_user.id, test_id, f"{current}_a", message.text)
 
+    # Natijani yangilash
+    update_user_score(message.from_user.id, test_id)
+
     await state.update_data(answers=answers)
     await message.answer(
         f"{current}-savol, B qismini yozing:"
@@ -294,6 +374,9 @@ async def answer_40_44_b(message: Message, state: FSMContext):
 
     # Javobni darhol bazaga saqlash
     db.add_user_answer(message.from_user.id, test_id, f"{current}_b", message.text)
+
+    # Natijani yangilash
+    update_user_score(message.from_user.id, test_id)
 
     if current < 44:
         current += 1
